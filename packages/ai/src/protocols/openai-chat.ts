@@ -599,41 +599,36 @@ const lowerMessages = Effect.fn("OpenAIChat.lowerMessages")(function* (request: 
     if (message.role === "user") bridgeTools()
     if (message.role === "system") {
       const part = yield* ProviderShared.wrappedSystemUpdate("OpenAI Chat", message)
+      const cacheControl = options.cacheControl?.(part.cache)
       if (pendingAttachments.length > 0) {
         messages.push({
           role: "user",
-          content: [
-            ...pendingAttachments.splice(0),
-            { type: "text", text: part.text, cache_control: options.cacheControl?.(part.cache) },
-          ],
+          content: [...pendingAttachments.splice(0), { type: "text", text: part.text, cache_control: cacheControl }],
         })
         continue
       }
       const previous = messages.at(-1)
       if (previous?.role === "user" && typeof previous.content === "string")
-        messages[messages.length - 1] = options.cacheControl?.(part.cache)
+        messages[messages.length - 1] = cacheControl
           ? {
               role: "user",
               content: [
                 { type: "text", text: previous.content },
-                { type: "text", text: part.text, cache_control: options.cacheControl(part.cache) },
+                { type: "text", text: part.text, cache_control: cacheControl },
               ],
             }
           : { role: "user", content: `${previous.content}\n${part.text}` }
       else if (previous?.role === "user" && Array.isArray(previous.content))
         messages[messages.length - 1] = {
           role: "user",
-          content: [
-            ...previous.content,
-            { type: "text", text: part.text, cache_control: options.cacheControl?.(part.cache) },
-          ],
+          content: [...previous.content, { type: "text", text: part.text, cache_control: cacheControl }],
         }
       else
         messages.push(
-          options.cacheControl?.(part.cache)
+          cacheControl
             ? {
                 role: "user",
-                content: [{ type: "text", text: part.text, cache_control: options.cacheControl(part.cache) }],
+                content: [{ type: "text", text: part.text, cache_control: cacheControl }],
               }
             : { role: "user", content: part.text },
         )
